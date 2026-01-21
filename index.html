@@ -1,81 +1,87 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8" />
-  <title>Word 转 PDF</title>
-  <style>
-    body { font-family: Arial, sans-serif; padding: 40px; }
-    button { padding: 10px 20px; margin-top: 10px; }
-    #status { margin-top: 20px; color: #333; }
-  </style>
+<meta charset="UTF-8">
+<title>Word → PDF 转换</title>
+<style>
+body { font-family: Arial, sans-serif; padding: 40px; }
+button { padding: 10px 20px; margin-top: 10px; }
+#status { margin-top: 20px; color: #333; }
+</style>
 </head>
 <body>
-  <h2>Word → PDF 格式转换</h2>
-  <input type="file" id="fileInput" accept=".doc,.docx" />
-  <br />
-  <button onclick="convert()">开始转换</button>
-  <div id="status"></div>
 
-  <script>
-    const WORKFLOW_URL = "https://xhb8dw3nwg.coze.site/run";
-    const TOKEN = "eyJhbGciOiJSUzI1NiIsImtpZCI6IjY0YjgyZWQ2LTJhYWMtNDQ2Mi1iNWNkLTU4OTVlN2QyMGY5OSJ9.eyJpc3MiOiJodHRwczovL2FwaS5jb3plLmNuIiwiYXVkIjpbIkhvTGs3UWFiVXNtSjRJdENiSVVsRHhkNEZGMG9icXJwIl0sImV4cCI6ODIxMDI2Njg3Njc5OSwiaWF0IjoxNzY4OTcwMTUxLCJzdWIiOiJzcGlmZmU6Ly9hcGkuY296ZS5jbi93b3JrbG9hZF9pZGVudGl0eS9pZDo3NTk3NDcyNTg1MzE1NTE2NDYyIiwic3JjIjoiaW5ib3VuZF9hdXRoX2FjY2Vzc190b2tlbl9pZDo3NTk3NjY4OTQ4OTUxMTcxMTE4In0.tm13hqaWqc92T4Rizo4glLLBlu_KO0ysv4lWwT_y73uIf4XAMAG-C_0R3Gbh8GQBwMtJnUaTv9uzaf88gx296F_3HIOo1yN_SDPSXCRpWVDk2IQWn3Hbb8u6BbJgPIYRm343FLeAiOenaQS7bCymas66GDxQvKjgPe6hAI5xodpmcwmUDxzQOySqF8VUADCSpHAsnCSrZC5Ho77IJyD8AvIwm16DJcvTlSqYuhc23034Bq5cxff66gBggEJuZC8knLvXdrQNV_sFLetMWkc8sOmRuPwV-XBokyJHbNGS6flVZMfOTrIpXgX8vH9MxYTDFqInbotjXaDZd6Ul9XScEA";
+<h2>Word → PDF 转换</h2>
+<input type="file" id="fileInput" accept=".doc,.docx" />
+<br/>
+<button onclick="convert()">开始转换</button>
+<div id="status"></div>
 
-    async function convert() {
-      const fileInput = document.getElementById("fileInput");
-      const statusDiv = document.getElementById("status");
+<script>
+const WORKFLOW_URL = "https://xhb8dw3nwg.coze.site/run"; // Coze workflow URL
+const TOKEN = "eyJhbGciOiJSUzI1NiIsImtpZCI6IjY0YjgyZWQ2LTJhYWMtNDQ2Mi1iNWNkLTU4OTVlN2QyMGY5OSJ9.eyJpc3MiOiJodHRwczovL2FwaS5jb3plLmNuIiwiYXVkIjpbIkhvTGs3UWFiVXNtSjRJdENiSVVsRHhkNEZGMG9icXJwIl0sImV4cCI6ODIxMDI2Njg3Njc5OSwiaWF0IjoxNzY4OTcwMTUxLCJzdWIiOiJzcGlmZmU6Ly9hcGkuY296ZS5jbi93b3JrbG9hZF9pZGVudGl0eS9pZDo3NTk3NDcyNTg1MzE1NTE2NDYyIiwic3JjIjoiaW5ib3VuZF9hdXRoX2FjY2Vzc190b2tlbl9pZDo3NTk3NjY4OTQ4OTUxMTcxMTE4In0.tm13hqaWqc92T4Rizo4glLLBlu_KO0ysv4lWwT_y73uIf4XAMAG-C_0R3Gbh8GQBwMtJnUaTv9uzaf88gx296F_3HIOo1yN_SDPSXCRpWVDk2IQWn3Hbb8u6BbJgPIYRm343FLeAiOenaQS7bCymas66GDxQvKjgPe6hAI5xodpmcwmUDxzQOySqF8VUADCSpHAsnCSrZC5Ho77IJyD8AvIwm16DJcvTlSqYuhc23034Bq5cxff66gBggEJuZC8knLvXdrQNV_sFLetMWkc8sOmRuPwV-XBokyJHbNGS6flVZMfOTrIpXgX8vH9MxYTDFqInbotjXaDZd6Ul9XScEA"; // 你的 token
 
-      if (!fileInput.files.length) {
-        statusDiv.innerText = "❌ 请先选择 Word 文件";
-        return;
-      }
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]); // 去掉 data:*/*;base64,
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
-      const file = fileInput.files[0];
-      statusDiv.innerText = "⏳ 正在转换中...";
+async function convert() {
+  const fileInput = document.getElementById("fileInput");
+  const statusDiv = document.getElementById("status");
 
-      // 读取文件为 Base64
-      const reader = new FileReader();
-      reader.onload = async function() {
-        const base64Data = reader.result.split(',')[1]; // 去掉前缀
-        const payload = {
-          input_file: base64Data,
-          filename: file.name
-        };
+  if (!fileInput.files.length) {
+    statusDiv.innerText = "❌ 请先选择 Word 文件";
+    return;
+  }
 
-        try {
-          const response = await fetch(WORKFLOW_URL, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${TOKEN}`
-            },
-            body: JSON.stringify(payload)
-          });
+  statusDiv.innerText = "⏳ 正在转换中...";
 
-          if (!response.ok) {
-            statusDiv.innerText = `❌ 请求失败，HTTP ${response.status}`;
-            return;
-          }
+  try {
+    const file = fileInput.files[0];
+    const base64Content = await fileToBase64(file);
 
-          const result = await response.json();
-          console.log("Workflow result:", result);
+    const payload = {
+      input_file: base64Content,
+      filename: file.name
+    };
 
-          if (result.conversion_status === "success" && result.converted_file) {
-            const a = document.createElement("a");
-            a.href = result.converted_file;
-            a.download = "converted.pdf";
-            a.click();
-            statusDiv.innerText = "✅ 转换成功，PDF 已下载";
-          } else {
-            statusDiv.innerText = "❌ 转换失败：" + (result.error_message || "未知错误");
-          }
-        } catch (err) {
-          console.error(err);
-          statusDiv.innerText = "❌ 调用异常，请看控制台";
-        }
-      };
-      reader.readAsDataURL(file);
+    const response = await fetch(WORKFLOW_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${TOKEN}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      statusDiv.innerText = `❌ 请求失败，HTTP ${response.status}`;
+      return;
     }
-  </script>
+
+    const result = await response.json();
+    console.log("Workflow result:", result);
+
+    if (result.conversion_status === "success" && result.converted_file) {
+      const a = document.createElement("a");
+      a.href = result.converted_file;
+      a.download = file.name.replace(/\.\w+$/, ".pdf");
+      a.click();
+      statusDiv.innerText = "✅ 转换成功，PDF 已下载";
+    } else {
+      statusDiv.innerText = "❌ 转换失败：" + (result.error_message || "未知错误");
+    }
+  } catch (err) {
+    console.error(err);
+    statusDiv.innerText = "❌ 调用异常，请看控制台";
+  }
+}
+</script>
+
 </body>
 </html>
-
