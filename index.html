@@ -4,42 +4,21 @@
   <meta charset="UTF-8" />
   <title>Word 转 PDF</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 40px;
-      max-width: 600px;
-      margin: auto;
-    }
-    h2 {
-      margin-bottom: 20px;
-    }
-    button {
-      padding: 10px 20px;
-      margin-top: 15px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    #status {
-      margin-top: 20px;
-      font-size: 14px;
-    }
+    body { font-family: Arial, sans-serif; padding: 40px; }
+    button { padding: 10px 20px; margin-top: 10px; }
+    #status { margin-top: 20px; color: #333; }
   </style>
 </head>
 <body>
-
   <h2>Word → PDF 格式转换</h2>
-
   <input type="file" id="fileInput" accept=".doc,.docx" />
   <br />
   <button onclick="convert()">开始转换</button>
-
   <div id="status"></div>
 
   <script>
-    console.log("DEPLOY VERSION 2026-01-21");
-
-    // ✅ 这里填你的 Vercel 中转接口（不要再用 coze.site/run）
-    const WORKFLOW_URL = "https://coze-proxy-kappa.vercel.app/api/convert";
+    const WORKFLOW_URL = "https://xhb8dw3nwg.coze.site/run";
+    const TOKEN = "你的Coze Token填这里";
 
     async function convert() {
       const fileInput = document.getElementById("fileInput");
@@ -50,55 +29,52 @@
         return;
       }
 
-      statusDiv.innerText = "⏳ 正在转换中，请稍候...";
+      const file = fileInput.files[0];
+      statusDiv.innerText = "⏳ 正在转换中...";
 
-      const formData = new FormData();
-      // ⚠️ 这个字段名必须和 Coze workflow 的 input 名字一致
-      formData.append("input_file", fileInput.files[0]);
+      // 读取文件为 Base64
+      const reader = new FileReader();
+      reader.onload = async function() {
+        const base64Data = reader.result.split(',')[1]; // 去掉前缀
+        const payload = {
+          input_file: base64Data,
+          filename: file.name
+        };
 
-      try {
-        const response = await fetch(WORKFLOW_URL, {
-          method: "POST",
-          body: formData
-        });
+        try {
+          const response = await fetch(WORKFLOW_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${TOKEN}`
+            },
+            body: JSON.stringify(payload)
+          });
 
-        if (!response.ok) {
-          statusDiv.innerText = `❌ 请求失败，HTTP ${response.status}`;
-          return;
+          if (!response.ok) {
+            statusDiv.innerText = `❌ 请求失败，HTTP ${response.status}`;
+            return;
+          }
+
+          const result = await response.json();
+          console.log("Workflow result:", result);
+
+          if (result.conversion_status === "success" && result.converted_file) {
+            const a = document.createElement("a");
+            a.href = result.converted_file;
+            a.download = "converted.pdf";
+            a.click();
+            statusDiv.innerText = "✅ 转换成功，PDF 已下载";
+          } else {
+            statusDiv.innerText = "❌ 转换失败：" + (result.error_message || "未知错误");
+          }
+        } catch (err) {
+          console.error(err);
+          statusDiv.innerText = "❌ 调用异常，请看控制台";
         }
-
-        const result = await response.json();
-        console.log("Workflow result:", result);
-
-        /**
-         * 下面假设 Coze workflow 返回结构是：
-         * {
-         *   conversion_status: "success",
-         *   converted_file: "https://xxx.pdf",
-         *   error_message: ""
-         * }
-         */
-
-        if (result.conversion_status === "success" && result.converted_file) {
-          const a = document.createElement("a");
-          a.href = result.converted_file;
-          a.download = "converted.pdf";
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-
-          statusDiv.innerText = "✅ 转换成功，PDF 已开始下载";
-        } else {
-          statusDiv.innerText =
-            "❌ 转换失败：" + (result.error_message || "未知错误");
-        }
-
-      } catch (err) {
-        console.error(err);
-        statusDiv.innerText = "❌ 调用异常，请打开控制台查看";
-      }
+      };
+      reader.readAsDataURL(file);
     }
   </script>
-
 </body>
 </html>
