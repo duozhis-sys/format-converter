@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <title>Word 转 PDF</title>
+</head>
+<body>
+  <h2>Word → PDF 格式转换</h2>
+
+  <input type="file" id="fileInput" accept=".doc,.docx" />
+  <br /><br />
+
+  <button onclick="convert()">开始转换</button>
+
+  <p id="status"></p>
+  <a id="download" style="display:none;" target="_blank">下载转换后的文件</a>
+
+  <script>
+    async function convert() {
+      const fileInput = document.getElementById("fileInput");
+      const status = document.getElementById("status");
+      const download = document.getElementById("download");
+
+      if (!fileInput.files.length) {
+        alert("请先选择 Word 文件");
+        return;
+      }
+
+      const formData = new FormData();
+      // ⭐ 这里的 key 必须 = workflow 输入参数名
+      formData.append("input_file", fileInput.files[0]);
+
+      status.innerText = "转换中，请稍候...";
+      download.style.display = "none";
+
+      try {
+        const res = await fetch(
+          "https://xhb8dw3nwg.coze.site/run",
+          {
+            method: "POST",
+            body: formData
+          }
+        );
+
+        const data = await res.json();
+
+        if (data.conversion_status === "success") {
+          status.innerText = "转换成功 ✅";
+          download.href = data.converted_file;
+          download.style.display = "inline";
+        } else {
+          status.innerText = "转换失败 ❌";
+          alert(data.error_message || "未知错误");
+        }
+
+      } catch (err) {
+        status.innerText = "请求失败";
+        console.error(err);
+      }
+    }
+  </script>
+</body>
+</html>
